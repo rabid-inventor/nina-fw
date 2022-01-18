@@ -172,7 +172,10 @@ void setupWiFi() {
   CommandHandler.begin();
 }
 
+
+
 void loop() {
+  
   if (debug)  ets_printf(".");
   // wait for a command
   memset(commandBuffer, 0x00, SPI_BUFFER_LEN);
@@ -195,4 +198,5 @@ void loop() {
   if (debug) {
     dumpBuffer("RESPONSE", responseBuffer, responseLength);
   }
+  CommandHandler.checkSleep(false); // check if a sleep command has been called in last coms cycle
 }

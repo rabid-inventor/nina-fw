@@ -23,7 +23,7 @@
 #include <WiFiSSLClient.h>
 #include <WiFiUdp.h>
 #include "esp_wpa2.h"
-
+#include "esp_sleep.h"
 #include "CommandHandler.h"
 
 #include "Arduino.h"
@@ -37,6 +37,10 @@ bool setCert = 0;
 // Optional, user-defined RSA private key
 char PK_BUFF[1700];
 bool setPSK = 0;
+
+// variables for handling sleep routine
+bool startSleep = False;
+uint8_t sleepTime = 0;
 
 /*IPAddress*/uint32_t resolvedHostname;
 
@@ -1121,6 +1125,56 @@ int setCertKey(const uint8_t command[], uint8_t response[]){
   return 6;
 }
 
+/* New commands */
+/*  0x55  setSleepWake
+    0x56  setLightSleep
+    0x57  setDeepSleep
+*/
+int setSleepWake(const uint8_t command[], uint8_t response[])
+{
+  // [command, paramaters, parameter length,  ]
+  /* left for ref
+  uint8_t pin = command[4];
+
+  int8_t value = digitalRead(pin);
+  */
+
+  response[2] = 1; // number of parameters
+  response[3] = 1; // parameter 1 length
+  response[4] = 1;
+
+  return 6;
+}
+int setLightSleep(const uint8_t command[], uint8_t response[])
+{
+  // [command, paramaters, parameter length,  ]
+  /* left for ref
+  uint8_t pin = command[4];
+
+  int8_t value = digitalRead(pin);
+  */
+
+  response[2] = 1; // number of parameters
+  response[3] = 1; // parameter 1 length
+  response[4] = 1;
+
+  return 6;
+}
+int setDeepSleep(const uint8_t command[], uint8_t response[])
+{
+  sleepTime = command[4];
+  startSleep = true;
+  
+  
+  //ets_printf("Awake");
+  response[2] = 1; // number of parameters
+  response[3] = 1; // parameter 1 length
+  response[4] = 1;
+
+  return 6;
+}
+
+
 typedef int (*CommandHandlerType)(const uint8_t command[], uint8_t response[]);
 
 const CommandHandlerType commandHandlers[] = {
@@ -1140,7 +1194,7 @@ const CommandHandlerType commandHandlers[] = {
   setClientCert, setCertKey, NULL, NULL, sendDataTcp, getDataBufTcp, insertDataBuf, NULL, NULL, NULL, wpa2EntSetIdentity, wpa2EntSetUsername, wpa2EntSetPassword, wpa2EntSetCACert, wpa2EntSetCertKey, wpa2EntEnable,
 
   // 0x50 -> 0x5f
-  setPinMode, setDigitalWrite, setAnalogWrite, setDigitalRead, setAnalogRead,
+  setPinMode, setDigitalWrite, setAnalogWrite, setDigitalRead, setAnalogRead, setSleepWake, setLightSleep, setDeepSleep 
 };
 
 #define NUM_COMMAND_HANDLERS (sizeof(commandHandlers) / sizeof(commandHandlers[0]))
@@ -1245,6 +1299,27 @@ void CommandHandlerClass::onWiFiReceive()
 void CommandHandlerClass::handleWiFiReceive()
 {
   xSemaphoreGiveFromISR(_updateGpio0PinSemaphore, NULL);
+}
+
+// below function is for executing a sleep called at the end of the loop 
+void CommandHandlerClass::checkSleep(bool powerSwitch=false){
+
+  if(startSleep){
+    ets_printf("Entering deep sleep for %d seconds", sleepTime);
+
+    //subroutine for shuting of other hardware 
+    if (powerSwitch){
+      continue
+    }
+    esp_deep_sleep(1000000LL * sleepTime);
+    ets_printf("Wakeup");
+
+    if(powerSwitch){
+      continue
+    }
+    startSleep = false
+  }
+
 }
 
 CommandHandlerClass CommandHandler;
