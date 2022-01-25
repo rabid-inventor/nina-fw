@@ -39,7 +39,7 @@ char PK_BUFF[1700];
 bool setPSK = 0;
 
 // variables for handling sleep routine
-bool startSleep = False;
+bool startSleep = false;
 uint8_t sleepTime = 0;
 
 /*IPAddress*/uint32_t resolvedHostname;
@@ -51,6 +51,15 @@ WiFiUDP udps[MAX_SOCKETS];
 WiFiSSLClient tlsClients[MAX_SOCKETS];
 WiFiServer tcpServers[MAX_SOCKETS];
 
+//callbacks to perform actions before and after sleep
+/*
+void __attribute__((weak)) powerSwitchOffCallback(){
+  continue;
+}
+void __attribute__((weak)) powerSwitchOffCallback(){
+  continue;
+}
+*/
 
 int setNet(const uint8_t command[], uint8_t response[])
 {
@@ -1302,22 +1311,22 @@ void CommandHandlerClass::handleWiFiReceive()
 }
 
 // below function is for executing a sleep called at the end of the loop 
-void CommandHandlerClass::checkSleep(bool powerSwitch=false){
+void CommandHandlerClass::checkSleep(bool powerSwitch, void(*power_off)(), void(*power_on)() ){
 
   if(startSleep){
     ets_printf("Entering deep sleep for %d seconds", sleepTime);
 
     //subroutine for shuting of other hardware 
     if (powerSwitch){
-      continue
+      power_off();
     }
     esp_deep_sleep(1000000LL * sleepTime);
     ets_printf("Wakeup");
 
     if(powerSwitch){
-      continue
+      power_on();
     }
-    startSleep = false
+    startSleep = false;
   }
 
 }

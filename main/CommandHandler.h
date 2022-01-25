@@ -28,6 +28,7 @@ public:
 
   void begin();
   int handle(const uint8_t command[], uint8_t response[]);
+  void checkSleep(bool powerSwitch, void(*power_off)(), void(*power_on)());  //new callback routine used at the end of the loop to check if a sleep has been initialsed 
 
 private:
   static void gpio0Updater(void*);

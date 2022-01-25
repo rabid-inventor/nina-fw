@@ -33,6 +33,8 @@ extern "C" {
 #include "CommandHandler.h"
 
 #define SPI_BUFFER_LEN SPI_MAX_DMA_LEN
+//pin used for shutting off 3V3
+#define PW_EN_PIN 21
 
 int debug = 0;
 
@@ -90,6 +92,9 @@ void setup() {
   // put SWD and SWCLK pins connected to SAMD as inputs
   pinMode(15, INPUT);
   pinMode(21, INPUT);
+  digitalWrite( PW_EN_PIN, HIGH);
+  pinMode(PW_EN_PIN, OUTPUT);
+  digitalWrite( PW_EN_PIN, HIGH);
 
   pinMode(5, INPUT);
   if (digitalRead(5) == LOW) {
@@ -172,6 +177,16 @@ void setupWiFi() {
   CommandHandler.begin();
 }
 
+void powerSwitchOffCallback(){
+  // put code here the executes before sleep
+  digitalWrite( PW_EN_PIN, LOW);
+  delay(500);
+}
+void powerSwitchOnCallback(){
+  // put code here the executes after sleep
+  digitalWrite( PW_EN_PIN, HIGH);
+  delay(500);
+}
 
 
 void loop() {
@@ -198,5 +213,5 @@ void loop() {
   if (debug) {
     dumpBuffer("RESPONSE", responseBuffer, responseLength);
   }
-  CommandHandler.checkSleep(false); // check if a sleep command has been called in last coms cycle
+  CommandHandler.checkSleep(true, &powerSwitchOffCallback,  &powerSwitchOnCallback); // check if a sleep command has been called in last coms cycle
 }
