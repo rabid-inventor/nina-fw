@@ -25,7 +25,8 @@
 #include "esp_wpa2.h"
 #include "esp_sleep.h"
 #include "CommandHandler.h"
-
+#include "driver/rtc_io.h"
+#include "esp32/ulp.h"
 #include "Arduino.h"
 
 const char FIRMWARE_VERSION[6] = "1.7.4";
@@ -39,7 +40,9 @@ char PK_BUFF[1700];
 bool setPSK = 0;
 
 // variables for handling sleep routine
-bool startSleep = false;
+bool startDeepSleep = false;
+bool startLightSleep = false;
+
 uint8_t sleepTime = 0;
 
 /*IPAddress*/uint32_t resolvedHostname;
@@ -1147,6 +1150,20 @@ int setSleepWake(const uint8_t command[], uint8_t response[])
 
   int8_t value = digitalRead(pin);
   */
+  //12 13 34 35
+  uint64_t wake_pin_mask  = 1 << command[4];
+
+  //setup esp32 gpio on the wakeup pin
+  gpio_config_t config = {
+            .pin_bit_mask = wake_pin_mask,
+            .mode = GPIO_MODE_INPUT
+    };
+
+
+  esp_sleep_enable_ext0_wakeup((gpio_num_t)command[4], 0);
+  //esp_sleep_enable_ext1_wakeup(wake_pin_mask, ESP_EXT1_WAKEUP_ALL_LOW);
+  gpio_wakeup_enable((gpio_num_t)command[4], GPIO_INTR_LOW_LEVEL  /*GPIO_INTR_HIGH_LEVEL*/);
+  esp_sleep_enable_gpio_wakeup();
 
   response[2] = 1; // number of parameters
   response[3] = 1; // parameter 1 length
@@ -1158,10 +1175,18 @@ int setLightSleep(const uint8_t command[], uint8_t response[])
 {
   // [command, paramaters, parameter length,  ]
   /* left for ref
+
   uint8_t pin = command[4];
 
   int8_t value = digitalRead(pin);
   */
+
+
+
+  
+  
+ 
+  startLightSleep = true;
 
   response[2] = 1; // number of parameters
   response[3] = 1; // parameter 1 length
@@ -1172,7 +1197,7 @@ int setLightSleep(const uint8_t command[], uint8_t response[])
 int setDeepSleep(const uint8_t command[], uint8_t response[])
 {
   sleepTime = command[4];
-  startSleep = true;
+  startDeepSleep = true;
   
   
   //ets_printf("Awake");
@@ -1311,23 +1336,39 @@ void CommandHandlerClass::handleWiFiReceive()
 }
 
 // below function is for executing a sleep called at the end of the loop 
-void CommandHandlerClass::checkSleep(bool powerSwitch, void(*power_off)(), void(*power_on)() ){
+void CommandHandlerClass::checkSleep(bool powerSwitch, void(*power_off)(), void(*power_on)()){
 
-  if(startSleep){
-    ets_printf("Entering deep sleep for %d seconds", sleepTime);
+  
 
-    //subroutine for shuting of other hardware 
-    if (powerSwitch){
-      power_off();
+    if (startDeepSleep)
+    {
+
+      //subroutine for shuting of other hardware 
+      if (powerSwitch){
+        power_off();
+      }
+      esp_deep_sleep(1000000LL * sleepTime);
+      ets_printf("Wakeup");
+
+      if(powerSwitch){
+        power_on();
+      }
+      startDeepSleep = false;
     }
-    esp_deep_sleep(1000000LL * sleepTime);
-    ets_printf("Wakeup");
 
-    if(powerSwitch){
+    if (startLightSleep){
+
+      //uart_tx_wait_idle(CONFIG_CONSOLE_UART_NUM);
+
+      
+      power_off();
+      /* Enter sleep mode */
+      esp_light_sleep_start();
+      startLightSleep = false;
       power_on();
     }
-    startSleep = false;
-  }
+
+  
 
 }
 

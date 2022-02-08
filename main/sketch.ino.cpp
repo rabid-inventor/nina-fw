@@ -36,6 +36,10 @@ extern "C" {
 //pin used for shutting off 3V3
 #define PW_EN_PIN 21
 
+//led pins
+#define LED_R_PIN 25
+#define LED_B_PIN 26
+#define LED_G_PIN 27
 int debug = 0;
 
 uint8_t* commandBuffer;
@@ -95,6 +99,11 @@ void setup() {
   digitalWrite( PW_EN_PIN, HIGH);
   pinMode(PW_EN_PIN, OUTPUT);
   digitalWrite( PW_EN_PIN, HIGH);
+
+  //setup led pins
+  pinMode(LED_R_PIN, OUTPUT);
+  pinMode(LED_B_PIN, OUTPUT);
+  pinMode(LED_G_PIN, OUTPUT);
 
   pinMode(5, INPUT);
   if (digitalRead(5) == LOW) {
@@ -180,11 +189,18 @@ void setupWiFi() {
 void powerSwitchOffCallback(){
   // put code here the executes before sleep
   digitalWrite( PW_EN_PIN, LOW);
+  digitalWrite(LED_G_PIN, HIGH);
   delay(500);
+  digitalWrite(LED_G_PIN, LOW);
 }
 void powerSwitchOnCallback(){
   // put code here the executes after sleep
   digitalWrite( PW_EN_PIN, HIGH);
+  
+  digitalWrite(LED_B_PIN, HIGH);
+  delay(500);
+  
+  
   delay(500);
 }
 
